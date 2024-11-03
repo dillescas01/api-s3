@@ -1,29 +1,41 @@
-import base64
 import boto3
 import json
-
-def upload_base_64_to_s3(s3_bucket_name, s3_file_name, base_64_str):
-    s3 = boto3.resource('s3')
-    s3.Object(s3_bucket_name, s3_file_name).put(Body=base64.b64decode(base_64_str))
-    return (s3_bucket_name, s3_file_name)
+import base64
 
 def lambda_handler(event, context):
+    # Verificar si event["body"] es una cadena JSON
+    if isinstance(event["body"], str):
+        body = json.loads(event["body"])
+    else:
+        body = event["body"]
+
+    # Obtener el nombre del bucket, el directorio y el archivo
+    nombre_bucket = body["name"]
+    nombre_directorio = body["directory_name"]
+    nombre_archivo = body["file_name"]
+    contenido_base64 = body["file_content"]
+
     try:
-        body = json.loads(event['body'])
-        bucket_name = body['bucket_name']
-        directory_name = body['directory_name']
-        file_name = body['file_name']
-        base64_content = body['file_content']
+        # Decodificar el contenido del archivo desde base64
+        file_content = base64.b64decode(contenido_base64)
+
+        s3 = boto3.client("s3")
         
-        s3_file_name = f"{directory_name}/{file_name}"
-        upload_base_64_to_s3(bucket_name, s3_file_name, base64_content)
+        # Crear el nombre completo de la clave (directorio + nombre del archivo)
+        key = f"{nombre_directorio}/{nombre_archivo}"
         
+        # Subir el archivo al bucket en la ubicación especificada
+        s3.put_object(Bucket=nombre_bucket, Key=key, Body=file_content)
+        
+        # Retornar respuesta exitosa
         return {
-            'statusCode': 200,
-            'body': json.dumps({'message': f'Archivo {file_name} subido exitosamente a {directory_name} en el bucket {bucket_name}.'})
+            "statusCode": 201,
+            "message": f"Archivo '{nombre_archivo}' subido correctamente en '{nombre_directorio}' dentro del bucket '{nombre_bucket}'"
         }
+
     except Exception as e:
+        # Captura y muestra el mensaje de error detallado
         return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
+            "statusCode": 400,
+            "message": f"No se pudo subir el archivo: {str(e)}"
         }

@@ -2,20 +2,43 @@ import boto3
 import json
 
 def lambda_handler(event, context):
+    # Verificar si event["body"] es una cadena JSON
+    if isinstance(event["body"], str):
+        body = json.loads(event["body"])
+    else:
+        body = event["body"]
+
+    # Obtener el nombre del bucket y el nombre del "directorio"
+    nombre_bucket = body["name"]
+    nombre_directorio = body["directory_name"]
+
     try:
-        body = json.loads(event['body'])
-        bucket_name = body['bucket_name']
-        directory_name = body['directory_name']
+        s3 = boto3.client("s3")
         
-        s3 = boto3.client('s3')
-        s3.put_object(Bucket=bucket_name, Key=(directory_name+'/'))
+        # Crear un objeto en S3 que simula un directorio
+        s3.put_object(Bucket=nombre_bucket, Key=f"{nombre_directorio}/")
         
+        # Retornar respuesta exitosa
         return {
-            'statusCode': 200,
-            'body': json.dumps({'message': f'Directorio {directory_name} creado en el bucket {bucket_name}.'})
+            "statusCode": 201,
+            "message": f"Directorio '{nombre_directorio}' creado en el bucket '{nombre_bucket}'"
         }
+
     except Exception as e:
+        # Captura y muestra el mensaje de error detallado
         return {
-            'statusCode': 500,
-            'body': json.dumps({'error': str(e)})
+            "statusCode": 400,
+            "message": f"No se pudo crear el directorio: {str(e)}"
         }
+
+
+
+
+
+
+
+
+
+
+
+
